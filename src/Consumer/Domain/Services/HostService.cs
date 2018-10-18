@@ -60,16 +60,16 @@ namespace Consumer.Domain.Services
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                consumidorService.ProcessarMensagensFilaAsync(configRabbitMQ, Listen, async (excecao, mensagem) =>
-                {
-                    if (excecao == null)
-                    {
-                        var repo = serviceProvider.GetService<ITransacaoRepository>();
-                        var teste = await repo.GetById(mensagem.IdTransacao);
+                //consumidorService.ProcessarMensagensFilaAsync(configRabbitMQ, Listen, async (excecao, mensagem) =>
+                //{
+                //    if (excecao == null)
+                //    {
+                //        var repo = serviceProvider.GetService<ITransacaoRepository>();
+                //        var teste = await repo.GetById(mensagem.IdTransacao);
 
-                        // await orquestrador.RealizarFluxoDeCadastros(mensagem.IdCredenciamento);
-                    }
-                });
+                //        // await orquestrador.RealizarFluxoDeCadastros(mensagem.IdCredenciamento);
+                //    }
+                //});
             }
             
             return Task.CompletedTask;

@@ -10,17 +10,24 @@
         public bool Durable { get; set; }
         public short TTL { get; set; }
         public short Retries { get; set; }
+
+        public Consuming Consuming { get; set; }
+        public Publishing Publishing { get; set; }
+        public Publishing Error { get; set; }
     }
 
-    public class Consume
+    public class Consuming
     {
-
+        public string Queue { get; set; }
+        public string Exchange { get; set; }
+        public string Bindingkey { get; set; }
+        public Publishing Deadletter { get; set; }
     }
 
-    public class Publish
+    public class Publishing
     {
-
+        public string Queue { get; set; }
+        public string Exchange { get; set; }
+        public string Routingkey { get; set; }
     }
-
-
 }

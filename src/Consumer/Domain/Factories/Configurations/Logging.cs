@@ -1,6 +1,6 @@
 ﻿namespace Consumer.Domain.Factories.Configurations
 {
-    class Logging
+    public class Logging
     {
     }
 }

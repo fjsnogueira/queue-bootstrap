@@ -1,5 +1,6 @@
 ﻿using Consumer.Domain.Factories.Configurations;
 using Consumer.Domain.Services;
+using Consumidor.Infraestrutura.RabbitMQ;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -28,6 +29,11 @@ namespace Consumer
 
                     services.Configure<Messaging>(hostContext.Configuration);
                     services.Configure<Logging>(hostContext.Configuration);
+                    services.Configure<Database>(hostContext.Configuration);
+
+                    services.AddSingleton<IMessagingFactory, MessagingFactory>();
+                    // services.AddSingleton<IDatabaseFactory, DatabaseFactory>();
+                    // services.AddSingleton<ILoggingFactory, LoggingFactory>();
 
                     services.AddHostedService<HostService>();
                 })

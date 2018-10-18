@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Consumer.Domain.Factories.Configurations
+﻿namespace Consumer.Domain.Factories.Configurations
 {
-    class Database
+    public class Database
     {
+        public string User { get; set; }
+        public string Password { get; set; }
+        public string Host { get; set; }
+        public string Port { get; set; }
     }
 }
