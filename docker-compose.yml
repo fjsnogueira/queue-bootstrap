@@ -1,0 +1,16 @@
+version: '2'
+services:
+  consumer:
+    container_name: consumer
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    depends_on:
+      - rabbitmq
+
+  rabbitmq:
+    container_name: rabbitmq
+    build: ./infrastructure/rabbitmq/
+    ports:
+      - "5672:5672"
+      - "15672:15672"

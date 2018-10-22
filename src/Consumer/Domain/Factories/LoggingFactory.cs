@@ -6,5 +6,6 @@ namespace Consumer.Domain.Factories
 {
     public class LoggingFactory
     {
+        
     }
 }

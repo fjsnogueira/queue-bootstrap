@@ -1,4 +1,5 @@
 ﻿using Consumer.Domain.Factories.Configurations;
+using Consumer.Domain.Models;
 using Consumer.Domain.Services;
 using Consumidor.Infraestrutura.RabbitMQ;
 using Microsoft.Extensions.Configuration;
@@ -13,10 +14,10 @@ namespace Consumer
     {
         public static async Task Main(string[] args)
         {
-            var host = new HostBuilder()
+            var host = new HostBuilder() 
                 .ConfigureAppConfiguration((hostContext, configuration) =>
                 {
-                    configuration.AddJsonFile("appsettings.json", optional: true);
+                    configuration.AddJsonFile("appsettings.json", optional: false);
                     configuration.AddEnvironmentVariables();
                 })
                 .ConfigureLogging((hostContext, logging) =>
@@ -27,13 +28,16 @@ namespace Consumer
                 {
                     services.AddOptions();
 
-                    services.Configure<Messaging>(hostContext.Configuration);
-                    services.Configure<Logging>(hostContext.Configuration);
-                    services.Configure<Database>(hostContext.Configuration);
+                    services.Configure<Messaging>(hostContext.Configuration.GetSection("Messaging"));
+                    services.Configure<Logging>(hostContext.Configuration.GetSection("Logging"));
+                    services.Configure<Database>(hostContext.Configuration.GetSection("Database"));
 
                     services.AddSingleton<IMessagingFactory, MessagingFactory>();
                     // services.AddSingleton<IDatabaseFactory, DatabaseFactory>();
                     // services.AddSingleton<ILoggingFactory, LoggingFactory>();
+
+                    services.AddTransient<IOrchestratorService, OrchestratorService>();
+                    services.AddTransient<IMessagingService<Message>, MessagingService<Message>>();
 
                     services.AddHostedService<HostService>();
                 })
@@ -42,9 +46,6 @@ namespace Consumer
             using (host)
             {
                 await host.StartAsync();
-
-                //var monitorLoop = host.Services.GetRequiredService<QueueService>();
-                //monitorLoop.StartMonitorLoop();
 
                 await host.WaitForShutdownAsync();
             }

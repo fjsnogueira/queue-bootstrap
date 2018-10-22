@@ -1,4 +1,11 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Consumer.Domain.Factories.Configurations;
+using Consumer.Domain.Models;
+using Consumidor.Infraestrutura.RabbitMQ;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -6,72 +13,73 @@ namespace Consumer.Domain.Services
 {
     public class HostService : BackgroundService
     {
+        private string _tag;
         private Task _executingTask;
-        private CancellationTokenSource _cts;
-
-        public HostService(/*ILogger<MsmqService> logger, IMsmqConnection connection, IMsmqProcessor processor*/)
+        private CancellationTokenSource _cancellationTokenSource;
+        private readonly Messaging _messaging;
+        private readonly IMessagingService<Message> _messagingService;
+        private readonly IMessagingFactory _messagingFactory;
+        private readonly IOrchestratorService _orchestratorService;
+        
+        public HostService(
+            IMessagingFactory messagingFactory,
+            IOrchestratorService orchestratorService,
+            IMessagingService<Message> messagingService,
+            IOptions<Messaging> messaging)
         {
-            //Logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            //Connection = connection ?? throw new ArgumentNullException(nameof(connection));
-            //Processor = processor ?? throw new ArgumentNullException(nameof(processor));
+            _messaging = messaging.Value ?? throw new ArgumentNullException(nameof(messaging));
+            _orchestratorService = orchestratorService ?? throw new ArgumentNullException(nameof(orchestratorService));
+            _messagingService = messagingService ?? throw new ArgumentNullException(nameof(messagingService));
+            _messagingFactory = messagingFactory ?? throw new ArgumentNullException(nameof(messagingFactory));
         }
 
         public override Task StartAsync(CancellationToken cancellationToken)
         {
-            // Create a linked token so we can trigger cancellation outside of this token's cancellation
-            _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-            // Store the task we're executing
-            _executingTask = ExecuteAsync(_cts.Token);
+            _executingTask = ExecuteAsync(_cancellationTokenSource.Token);
 
-            // If the task is completed then return it
             if (_executingTask.IsCompleted)
             {
                 return _executingTask;
             }
 
-            //abrir conexoes com banco e messaging
-
-            // Otherwise it's running
             return Task.CompletedTask;
         }
 
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
-            // Stop called without start
             if (_executingTask == null)
             {
                 return;
             }
 
-            // Signal cancellation to the executing method
-            _cts.Cancel();
+            _cancellationTokenSource.Cancel();
 
-            // Wait until the task completes or the stop token triggers
             await Task.WhenAny(_executingTask, Task.Delay(-1, cancellationToken));
 
-            //fechar conexoes com banco e messaging
+            var channel = _messagingFactory.Configure();
+            channel.BasicCancel(_tag);
 
-            // Throw if cancellation triggered
-            cancellationToken.ThrowIfCancellationRequested();
+            _messagingFactory.Disconnect();
+            // _databaseFactory.Disconnect();
         }
 
         protected override Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                //consumidorService.ProcessarMensagensFilaAsync(configRabbitMQ, Listen, async (excecao, mensagem) =>
-                //{
-                //    if (excecao == null)
-                //    {
-                //        var repo = serviceProvider.GetService<ITransacaoRepository>();
-                //        var teste = await repo.GetById(mensagem.IdTransacao);
+            cancellationToken.ThrowIfCancellationRequested();
 
-                //        // await orquestrador.RealizarFluxoDeCadastros(mensagem.IdCredenciamento);
-                //    }
-                //});
-            }
-            
+            var channel = _messagingFactory.Configure();
+            var consumer = new AsyncEventingBasicConsumer(channel);
+
+            consumer.Received += _messagingService.Dequeue(async (exception, message) =>
+            {
+                Console.WriteLine("Foi orquestrador");
+                await _orchestratorService.OrchestrateAsync(message);
+            });
+
+            _tag = channel.BasicConsume(_messaging.Consuming.Queue, false, consumer);
+
             return Task.CompletedTask;
         }
     }

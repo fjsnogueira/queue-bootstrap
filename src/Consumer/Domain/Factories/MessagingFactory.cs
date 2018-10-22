@@ -1,13 +1,14 @@
 ﻿using Consumer.Domain.Factories.Configurations;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using System;
 using System.Collections.Generic;
 
 namespace Consumidor.Infraestrutura.RabbitMQ
 {
     public interface IMessagingFactory
     {
-        IModel Connect();
+        IModel Configure();
         void Disconnect();
     }
 
@@ -19,14 +20,24 @@ namespace Consumidor.Infraestrutura.RabbitMQ
         private IConnection _connection;
 
         public MessagingFactory(
-            IConnectionFactory connectionFactory,
             IOptions<Messaging> messaging)
         {
-            _connectionFactory = connectionFactory;
-            _messaging = messaging.Value;
+            _messaging = messaging.Value ?? throw new ArgumentNullException(nameof(messaging));
+
+            _connectionFactory = new ConnectionFactory()
+            {
+                HostName = _messaging.Host,
+                Port = _messaging.Port,
+                UserName = _messaging.User,
+                Password = _messaging.Password,
+                VirtualHost = _messaging.VirtualHost,
+                DispatchConsumersAsync = true,
+                AutomaticRecoveryEnabled = true,
+                RequestedHeartbeat = 200
+            };
         }
 
-        public IModel Connect()
+        public IModel Configure()
         {
             if (_channel != null)
                 return _channel;
@@ -72,14 +83,14 @@ namespace Consumidor.Infraestrutura.RabbitMQ
         private void ConnectionReconnection()
         {
             _connection = _connectionFactory.CreateConnection();
-            _channel = Connect();
+            _channel = Configure();
         }
 
         private void ChannelReconnection()
         {
             if (_connection.IsOpen)
             {
-                _channel = Connect();
+                _channel = Configure();
             }
             else
             {

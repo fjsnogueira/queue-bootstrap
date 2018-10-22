@@ -2,5 +2,6 @@
 {
     public class Logging
     {
+        public string App { get; set; }
     }
 }
