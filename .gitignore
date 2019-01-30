@@ -15,6 +15,13 @@ project.lock.json
 *.userosscache
 *.sln.docstates
 
+# Test results
+tools/gatling/results
+tests/Coverage
+tools/gatling/target/test-classes/
+tests.unit/coverage.json
+tests.unit/coverage.opencover.xml
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
@@ -29,9 +36,16 @@ bld/
 msbuild.log
 msbuild.err
 msbuild.wrn
+.sonarqube/
 
 # Visual Studio 2015
 .vs/
 
 # Logs
+api/log*.txt
+api/[Ll]ogs/
 /packages
+
+# Submodules
+redes-migrations-credenciamento/
+/src/api/Logs

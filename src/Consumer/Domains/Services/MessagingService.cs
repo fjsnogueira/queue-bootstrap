@@ -41,8 +41,6 @@ namespace Consumer.Domains.Services
             
             return async (model, ea) =>
             {
-                Console.WriteLine("Foi");
-
                 var body = ea.Body;
                 var message = Encoding.UTF8.GetString(body);
                 var retries = 0;

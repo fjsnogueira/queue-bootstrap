@@ -39,7 +39,9 @@ namespace Consumer.Configurations.Factories
         public IModel Configure()
         {
             if (_channel != null)
+            {
                 return _channel;
+            }   
 
             _connection = _connectionFactory.CreateConnection();
 

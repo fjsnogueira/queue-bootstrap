@@ -2,6 +2,7 @@
 using Consumer.Domains.Models;
 using Consumer.Domains.Models.Options;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -20,14 +21,17 @@ namespace Consumer.Domains.Services
         private readonly IMessagingService<Message> _messagingService;
         private readonly IMessagingFactory _messagingFactory;
         private readonly IOrchestratorService _orchestratorService;
+        private readonly ILogger<HostService> _logger;
         
         public HostService(
             IMessagingFactory messagingFactory,
             IOrchestratorService orchestratorService,
             IMessagingService<Message> messagingService,
-            IOptions<Messaging> messaging)
+            IOptions<Messaging> messaging,
+            ILogger<HostService> logger)
         {
             _messaging = messaging.Value ?? throw new ArgumentNullException(nameof(messaging));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _orchestratorService = orchestratorService ?? throw new ArgumentNullException(nameof(orchestratorService));
             _messagingService = messagingService ?? throw new ArgumentNullException(nameof(messagingService));
             _messagingFactory = messagingFactory ?? throw new ArgumentNullException(nameof(messagingFactory));
@@ -74,9 +78,10 @@ namespace Consumer.Domains.Services
 
             consumer.Received += _messagingService.Dequeue(async (exception, message) =>
             {
-                Console.WriteLine("Foi orquestrador");
-
-                await _orchestratorService.OrchestrateAsync(message);
+                using (_logger.BeginScope(Guid.NewGuid().ToString()))
+                {
+                    await _orchestratorService.OrchestrateAsync(message);
+                }
             });
 
             _tag = channel.BasicConsume(_messaging.Consuming.Queue, false, consumer);
