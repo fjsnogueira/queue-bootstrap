@@ -1,5 +1,5 @@
-﻿using Consumer.Domain.Factories.Configurations;
-using Consumidor.Infraestrutura.RabbitMQ;
+﻿using Consumer.Configurations.Factories;
+using Consumer.Domains.Models.Options;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using RabbitMQ.Client.Events;
@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Consumer.Domain.Services
+namespace Consumer.Domains.Services
 {
     public interface IMessagingService<T>
     {
@@ -33,7 +33,9 @@ namespace Consumer.Domain.Services
         public AsyncEventHandler<BasicDeliverEventArgs> Dequeue(Func<Exception, T, Task> callback)
         {
             if (callback == null)
+            {
                 throw new ArgumentNullException(nameof(callback));
+            }
 
             var channel = _messagingFactory.Configure();
             

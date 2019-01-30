@@ -1,7 +1,7 @@
-﻿using Consumer.Domain.Models;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using Consumer.Domains.Models;
 
-namespace Consumer.Domain.Services
+namespace Consumer.Domains.Services
 {
     public interface IOrchestratorService
     {

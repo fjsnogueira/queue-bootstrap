@@ -1,6 +1,6 @@
-﻿using Consumer.Domain.Factories.Configurations;
-using Consumer.Domain.Models;
-using Consumidor.Infraestrutura.RabbitMQ;
+﻿using Consumer.Configurations.Factories;
+using Consumer.Domains.Models;
+using Consumer.Domains.Models.Options;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
@@ -9,7 +9,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Consumer.Domain.Services
+namespace Consumer.Domains.Services
 {
     public class HostService : BackgroundService
     {
@@ -75,6 +75,7 @@ namespace Consumer.Domain.Services
             consumer.Received += _messagingService.Dequeue(async (exception, message) =>
             {
                 Console.WriteLine("Foi orquestrador");
+
                 await _orchestratorService.OrchestrateAsync(message);
             });
 

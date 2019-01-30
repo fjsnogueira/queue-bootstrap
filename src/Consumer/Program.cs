@@ -1,7 +1,8 @@
-﻿using Consumer.Domain.Factories.Configurations;
-using Consumer.Domain.Models;
-using Consumer.Domain.Services;
-using Consumidor.Infraestrutura.RabbitMQ;
+﻿
+using Consumer.Configurations.Factories;
+using Consumer.Domains.Models;
+using Consumer.Domains.Models.Options;
+using Consumer.Domains.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,7 +18,7 @@ namespace Consumer
             var host = new HostBuilder() 
                 .ConfigureAppConfiguration((hostContext, configuration) =>
                 {
-                    configuration.AddJsonFile("appsettings.json", optional: false);
+                    configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
                     configuration.AddEnvironmentVariables();
                 })
                 .ConfigureLogging((hostContext, logging) =>
@@ -29,13 +30,13 @@ namespace Consumer
                     services.AddOptions();
 
                     services.Configure<Messaging>(hostContext.Configuration.GetSection("Messaging"));
-                    services.Configure<Logging>(hostContext.Configuration.GetSection("Logging"));
                     services.Configure<Database>(hostContext.Configuration.GetSection("Database"));
 
-                    services.AddSingleton<IMessagingFactory, MessagingFactory>();
-                    // services.AddSingleton<IDatabaseFactory, DatabaseFactory>();
-                    // services.AddSingleton<ILoggingFactory, LoggingFactory>();
+                    services.AddScoped<IDatabaseFactory, DatabaseFactory>();
+                    services.AddScoped<IMessagingFactory, MessagingFactory>();
 
+                    services.AddTransient<ISqlService, SqlService>();
+                    services.AddTransient<IOrderService, OrderService>();
                     services.AddTransient<IOrchestratorService, OrchestratorService>();
                     services.AddTransient<IMessagingService<Message>, MessagingService<Message>>();
 

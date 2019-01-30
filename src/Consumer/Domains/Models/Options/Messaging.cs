@@ -1,4 +1,4 @@
-﻿namespace Consumer.Domain.Factories.Configurations
+﻿namespace Consumer.Domains.Models.Options
 {
     public class Messaging
     {
@@ -10,7 +10,6 @@
         public bool Durable { get; set; }
         public short TTL { get; set; }
         public short Retries { get; set; }
-
         public Consuming Consuming { get; set; }
         public Publishing Publishing { get; set; }
         public Publishing Error { get; set; }

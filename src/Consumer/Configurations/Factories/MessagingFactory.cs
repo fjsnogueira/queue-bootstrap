@@ -1,10 +1,10 @@
-﻿using Consumer.Domain.Factories.Configurations;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
+using Consumer.Domains.Models.Options;
 using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
 
-namespace Consumidor.Infraestrutura.RabbitMQ
+namespace Consumer.Configurations.Factories
 {
     public interface IMessagingFactory
     {
@@ -19,8 +19,7 @@ namespace Consumidor.Infraestrutura.RabbitMQ
         private IModel _channel;
         private IConnection _connection;
 
-        public MessagingFactory(
-            IOptions<Messaging> messaging)
+        public MessagingFactory(IOptions<Messaging> messaging)
         {
             _messaging = messaging.Value ?? throw new ArgumentNullException(nameof(messaging));
 
@@ -77,7 +76,9 @@ namespace Consumidor.Infraestrutura.RabbitMQ
         public void Disconnect()
         {
             if (_connection.IsOpen)
+            {
                 _connection.Close();
+            }
         }
 
         private void ConnectionReconnection()

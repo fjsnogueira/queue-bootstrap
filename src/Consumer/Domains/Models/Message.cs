@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace Consumer.Domain.Models
+namespace Consumer.Domains.Models
 {
     public class Message
     {
