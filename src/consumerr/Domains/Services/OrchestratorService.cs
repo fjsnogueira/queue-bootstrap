@@ -25,7 +25,7 @@ namespace Consumer.Domains.Services
         {
             this._logger.LogInformation($"START | Message: { message.Id }");
 
-            await Task.Delay(5000);
+            await Task.Delay(10000);
 
             this._logger.LogInformation($"END | Message: { message.Id }");
         }

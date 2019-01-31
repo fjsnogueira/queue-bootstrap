@@ -6,7 +6,6 @@ using Consumer.Domains.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
 using System.IO;
@@ -36,8 +35,8 @@ namespace Consumer
                 services.Configure<Messaging>(hostContext.Configuration.GetSection("Messaging"));
                 services.Configure<Database>(hostContext.Configuration.GetSection("Database"));
 
-                services.AddScoped<IDatabaseFactory, DatabaseFactory>();
-                services.AddScoped<IMessagingFactory, MessagingFactory>();
+                services.AddSingleton<IDatabaseFactory, DatabaseFactory>();
+                services.AddSingleton<IMessagingFactory, MessagingFactory>();
 
                 services.AddTransient<ISqlService, SqlService>();
                 services.AddTransient<IOrderService, OrderService>();

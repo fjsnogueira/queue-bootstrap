@@ -47,10 +47,12 @@ namespace Consumer.Configurations.Factories
 
             _channel = _connection.CreateModel();
 
-            // Errors queue
+            // Creating of error queues, when the microservice can't process a message for an determined amount of tries, it goes to this queue
+            _channel.ExchangeDeclare(_messaging.Error.Exchange, ExchangeType.Direct, true);
             _channel.QueueDeclare(_messaging.Error.Queue, true, false, false, null);
+            _channel.QueueBind(_messaging.Error.Queue, _messaging.Error.Exchange, _messaging.Error.Routingkey);
 
-            // Deadletter exchange and queue
+            // The deadletter of this microservices' queue, when it can't process a message, that message goes to deadletter, after an amount of seconds, that message comes back to the original queue to be reprocessed
             _channel.ExchangeDeclare(_messaging.Consuming.Deadletter.Exchange, ExchangeType.Direct, true);
             _channel.QueueDeclare(_messaging.Consuming.Deadletter.Queue, true, false, false, new Dictionary<string, object>()
             {
@@ -60,7 +62,7 @@ namespace Consumer.Configurations.Factories
             });
             _channel.QueueBind(_messaging.Consuming.Deadletter.Queue, _messaging.Consuming.Deadletter.Exchange, _messaging.Consuming.Deadletter.Routingkey);
 
-            // This service exchange and queue
+            // The queue this microservices will watch for new messages
             _channel.ExchangeDeclare(_messaging.Consuming.Exchange, ExchangeType.Direct, true);
             _channel.QueueDeclare(_messaging.Consuming.Queue, true, false, false, new Dictionary<string, object>()
             {
@@ -68,7 +70,7 @@ namespace Consumer.Configurations.Factories
                 { "x-dead-letter-routing-key", _messaging.Consuming.Deadletter.Routingkey }
             });
             _channel.QueueBind(_messaging.Consuming.Queue, _messaging.Consuming.Exchange, _messaging.Consuming.Bindingkey);
-            
+                        
             _connection.ConnectionShutdown += (x, y) => ConnectionReconnection();
             _channel.ModelShutdown += (x, y) => ChannelReconnection();
 

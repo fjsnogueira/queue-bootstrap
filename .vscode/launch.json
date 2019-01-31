@@ -9,9 +9,9 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/consumer/bin/Debug/netcoreapp2.1/Consumer.dll",
+            "program": "${workspaceFolder}/src/consumerr/bin/Debug/netcoreapp2.2/Consumer.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/src/consumer",
+            "cwd": "${workspaceFolder}/src/consumerr",
             "console": "internalConsole",
             "stopAtEntry": false,
             "internalConsoleOptions": "openOnSessionStart"

@@ -20,11 +20,13 @@ namespace Consumer.Domains.Services
         private readonly Messaging _messaging;
         private readonly IMessagingService<Message> _messagingService;
         private readonly IMessagingFactory _messagingFactory;
+        private readonly IDatabaseFactory _databaseFactory;
         private readonly IOrchestratorService _orchestratorService;
         private readonly ILogger<HostService> _logger;
         
         public HostService(
             IMessagingFactory messagingFactory,
+            IDatabaseFactory databaseFactory,
             IOrchestratorService orchestratorService,
             IMessagingService<Message> messagingService,
             IOptions<Messaging> messaging,
@@ -35,6 +37,7 @@ namespace Consumer.Domains.Services
             _orchestratorService = orchestratorService ?? throw new ArgumentNullException(nameof(orchestratorService));
             _messagingService = messagingService ?? throw new ArgumentNullException(nameof(messagingService));
             _messagingFactory = messagingFactory ?? throw new ArgumentNullException(nameof(messagingFactory));
+            _databaseFactory = databaseFactory ?? throw new ArgumentNullException(nameof(databaseFactory));
         }
 
         public override Task StartAsync(CancellationToken cancellationToken)
@@ -66,21 +69,44 @@ namespace Consumer.Domains.Services
             channel.BasicCancel(_tag);
 
             _messagingFactory.Disconnect();
-            // _databaseFactory.Disconnect();
         }
 
         protected override Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
             var channel = _messagingFactory.Configure();
             var consumer = new AsyncEventingBasicConsumer(channel);
 
-            consumer.Received += _messagingService.Dequeue(async (exception, message) =>
+            consumer.Received += _messagingService.Dequeue(async (raw, message) =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (message == null) 
+                {
+                    return;
+                }
+
                 using (_logger.BeginScope(Guid.NewGuid().ToString()))
                 {
-                    await _orchestratorService.OrchestrateAsync(message);
+                    try
+                    {
+                        await _databaseFactory.OpenConnectionAsync();
+
+                        await _databaseFactory.BeginTransactionAsync();
+
+                        await _orchestratorService.OrchestrateAsync(message);
+
+                        _databaseFactory.CommitTransaction();
+                    }
+                    catch (Exception ex) 
+                    {
+                        _databaseFactory.RollbackTransaction();
+
+                        throw ex;
+                    }
+                    finally
+                    {
+                        _databaseFactory.CloseConnection();
+                    }
                 }
             });
 

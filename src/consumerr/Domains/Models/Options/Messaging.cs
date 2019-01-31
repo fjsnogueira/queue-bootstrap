@@ -8,7 +8,7 @@
         public string User { get; set; }
         public string Password { get; set; }
         public bool Durable { get; set; }
-        public short TTL { get; set; }
+        public long TTL { get; set; }
         public short Retries { get; set; }
         public Consuming Consuming { get; set; }
         public Publishing Publishing { get; set; }

@@ -1,5 +1,6 @@
 ﻿using Consumer.Configurations.Factories;
 using Consumer.Domains.Models.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using RabbitMQ.Client.Events;
@@ -13,7 +14,7 @@ namespace Consumer.Domains.Services
 {
     public interface IMessagingService<T>
     {
-        AsyncEventHandler<BasicDeliverEventArgs> Dequeue(Func<Exception, T, Task> callback);
+        AsyncEventHandler<BasicDeliverEventArgs> Dequeue(Func<string, T, Task> callback);
         void Queue(string exchange, string routingKey, string message, Dictionary<string, object> headers = null);
     }
 
@@ -21,16 +22,19 @@ namespace Consumer.Domains.Services
     {
         private readonly IMessagingFactory _messagingFactory;
         private readonly Messaging _messaging;
+        private readonly ILogger<MessagingService<T>> _logger;
 
         public MessagingService(
             IMessagingFactory messagingFactory,
-            IOptions<Messaging> messaging)
+            IOptions<Messaging> messaging,
+            ILogger<MessagingService<T>> logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _messagingFactory = messagingFactory ?? throw new ArgumentNullException(nameof(messagingFactory));
             _messaging = messaging.Value ?? throw new ArgumentNullException(nameof(messaging));
         }
 
-        public AsyncEventHandler<BasicDeliverEventArgs> Dequeue(Func<Exception, T, Task> callback)
+        public AsyncEventHandler<BasicDeliverEventArgs> Dequeue(Func<string, T, Task> callback)
         {
             if (callback == null)
             {
@@ -41,53 +45,69 @@ namespace Consumer.Domains.Services
             
             return async (model, ea) =>
             {
+                _logger.LogDebug("MESSAGING | RECEIVING NEW MESSAGE");
+
                 var body = ea.Body;
-                var message = Encoding.UTF8.GetString(body);
+                var raw = Encoding.UTF8.GetString(body);
                 var retries = 0;
+
+                _logger.LogDebug($"MESSAGING | RAW MESSAGE: { raw }");
 
                 try
                 {
                     retries = Retries(ea);
 
-                    var mensagem = JsonConvert.DeserializeObject<T>(message);
+                    _logger.LogDebug($"MESSAGING | THIS MESSAGE HAS BEEN PROCESSED { retries } TIMES");
+
+                    var message = JsonConvert.DeserializeObject<T>(raw);
 
                     if (_messaging.Retries > retries)
                     {
-                        await callback.Invoke(null, mensagem);
+                        _logger.LogDebug($"MESSAGING | MESSAGE WAS SUCCESSFULLY DESERIALIZE, INVOKING ORCHESTRATION");
+
+                        await callback.Invoke(raw, message);
                     }
                     else
                     {
+                        _logger.LogDebug($"MESSAGING | MESSAGE WAS PROCESSED TOO MANY TIMES, PUSHING TO ERROR QUEUE");
+
                         var headers = new Dictionary<string, object>
                         {
                             { "queue", _messaging.Consuming.Queue }
                         };
 
-                        Queue(_messaging.Error.Exchange, _messaging.Error.Routingkey, message, headers);
+                        Queue(_messaging.Error.Exchange, _messaging.Error.Routingkey, raw, headers);
                     }
+
+                    _logger.LogDebug($"MESSAGING | MESSAGE HAS BEEN ACKED");
 
                     channel.BasicAck(ea.DeliveryTag, false);
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogDebug($"MESSAGING | SOMETHING HAPPENED WHEN PROCESSING THE MESSAGE: { ex }");
+
                     if (_messaging.Retries > retries)
                     {
                         channel.BasicNack(ea.DeliveryTag, false, false);
+
+                        _logger.LogDebug($"MESSAGING | MESSAGE HAS BEEN NACKED");
                     }
                     else
                     {
+                        _logger.LogDebug($"MESSAGING | MESSAGE WAS PROCESSED TOO MANY TIMES, PUSHING TO ERROR QUEUE");
+
                         var headers = new Dictionary<string, object>
                         {
                             { "queue", _messaging.Consuming.Queue }
                         };
 
-                        Queue(_messaging.Error.Exchange, _messaging.Error.Routingkey, message, headers);
+                        Queue(_messaging.Error.Exchange, _messaging.Error.Routingkey, raw, headers);
 
                         channel.BasicAck(ea.DeliveryTag, false);
                     }
 
-                    var obj = (T)Activator.CreateInstance(typeof(T));
-
-                    await callback.Invoke(ex, obj);
+                    await callback.Invoke(raw, default(T));
                 }
             };
         }
@@ -100,23 +120,35 @@ namespace Consumer.Domains.Services
             properties.Headers = headers;
             properties.Persistent = true;
 
+            _logger.LogDebug($"MESSAGING | PUSHING '{ message }' TO ROUTING KEY '{ routingKey }' ON '{ exchange }' EXCHANGE");
+
             channel.BasicPublish(exchange, routingKey, false, properties, Encoding.ASCII.GetBytes(message));
+
+            _logger.LogDebug($"MESSAGING | MESSAGE WAS SUCCESSFULLY PUSHED");
         }
 
         private int Retries(BasicDeliverEventArgs ea)
         {
             int count = 0;
 
-            if (ea.BasicProperties.Headers is Dictionary<string, object> dic && dic.ContainsKey("x-death"))
+            try
             {
-                if (ea.BasicProperties.Headers["x-death"] is List<object> xdeath)
+                if (ea.BasicProperties.Headers is Dictionary<string, object> dic && dic.ContainsKey("x-death"))
                 {
-                    if (xdeath.FirstOrDefault() is Dictionary<string, object> headers)
+                    if (ea.BasicProperties.Headers["x-death"] is List<object> xdeath)
                     {
-                        count = (int)headers["count"];
+                        if (xdeath.FirstOrDefault() is Dictionary<string, object> headers)
+                        {
+                            count = Convert.ToInt32(headers["count"]);
+                        }
                     }
                 }
             }
+            catch
+            {
+                count = 1;
+            }
+            
 
             return count++;
         }
